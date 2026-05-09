@@ -67,7 +67,7 @@ function OrdersPage() {
       total: Number(o.total),
       paymentMethod: o.payment_method,
     });
-    setTimeout(() => window.print(), 250);
+    printReceiptWhenReady();
   };
 
   return (

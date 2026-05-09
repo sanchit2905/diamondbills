@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { Receipt, type ReceiptData } from "@/components/Receipt";
+import { Receipt, printReceiptWhenReady, type ReceiptData } from "@/components/Receipt";
 
 export const Route = createFileRoute("/_app/orders")({
   component: OrdersPage,
@@ -67,7 +67,7 @@ function OrdersPage() {
       total: Number(o.total),
       paymentMethod: o.payment_method,
     });
-    setTimeout(() => window.print(), 250);
+    printReceiptWhenReady();
   };
 
   return (

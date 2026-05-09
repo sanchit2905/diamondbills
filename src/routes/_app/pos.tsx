@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Plus, Minus, Trash2, Banknote, CreditCard, Smartphone } from "lucide-react";
 import { formatMoney, generateInvoiceNumber } from "@/lib/format";
 import { toast } from "sonner";
-import { Receipt, type ReceiptData } from "@/components/Receipt";
+import { Receipt, printReceiptWhenReady, type ReceiptData } from "@/components/Receipt";
+import { ProductAvatar } from "@/components/ProductAvatar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/pos")({
@@ -19,6 +20,12 @@ interface Product {
   name: string;
   price: number;
   tax_rate: number;
+  image_url: string | null;
+  category_id: string | null;
+}
+interface Category {
+  id: string;
+  name: string;
 }
 interface CartLine {
   product_id: string;
@@ -29,10 +36,13 @@ interface CartLine {
 }
 
 type PaymentMethod = "cash" | "card" | "upi";
+const ALL = "__all__";
 
 function PosPage() {
   const { business, currentBranch, profile, user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCat, setActiveCat] = useState<string>(ALL);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -42,21 +52,28 @@ function PosPage() {
   useEffect(() => {
     if (!business) return;
     void (async () => {
-      const { data } = await supabase
-        .from("products")
-        .select("id,name,price,tax_rate")
-        .eq("business_id", business.id)
-        .eq("is_available", true)
-        .order("name");
-      setProducts((data ?? []) as Product[]);
+      const [{ data: ps }, { data: cs }] = await Promise.all([
+        supabase
+          .from("products")
+          .select("id,name,price,tax_rate,image_url,category_id")
+          .eq("business_id", business.id)
+          .eq("is_available", true)
+          .order("name"),
+        supabase.from("categories").select("id,name").eq("business_id", business.id).order("name"),
+      ]);
+      setProducts((ps ?? []) as Product[]);
+      setCategories((cs ?? []) as Category[]);
     })();
   }, [business?.id]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
-  }, [products, search]);
+    return products.filter((p) => {
+      if (activeCat !== ALL && p.category_id !== activeCat) return false;
+      if (!q) return true;
+      return p.name.toLowerCase().includes(q);
+    });
+  }, [products, search, activeCat]);
 
   const totals = useMemo(() => {
     let subtotal = 0;
@@ -137,15 +154,15 @@ function PosPage() {
     });
     setCart([]);
     setDiscount(0);
-    // auto print after the receipt mounts
-    setTimeout(() => window.print(), 250);
+    // auto print once the receipt is mounted in the DOM
+    printReceiptWhenReady();
   };
 
   return (
     <div className="grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[1fr_400px]">
       {/* Product grid */}
       <div className="flex flex-col overflow-hidden p-4 md:p-6">
-        <div className="relative mb-4">
+        <div className="relative mb-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search products…"
@@ -154,6 +171,28 @@ function PosPage() {
             className="h-11 pl-9"
           />
         </div>
+        {categories.length > 0 && (
+          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+            <Button
+              size="sm"
+              variant={activeCat === ALL ? "default" : "outline"}
+              onClick={() => setActiveCat(ALL)}
+            >
+              All
+            </Button>
+            {categories.map((c) => (
+              <Button
+                key={c.id}
+                size="sm"
+                variant={activeCat === c.id ? "default" : "outline"}
+                onClick={() => setActiveCat(c.id)}
+                className="whitespace-nowrap"
+              >
+                {c.name}
+              </Button>
+            ))}
+          </div>
+        )}
         {filtered.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             {products.length === 0 ? "No products yet — add some in Products." : "No matches"}
@@ -164,13 +203,15 @@ function PosPage() {
               <button
                 key={p.id}
                 onClick={() => addToCart(p)}
-                className="group flex flex-col rounded-xl border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
+                className="group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
               >
-                <div className="flex h-20 items-center justify-center rounded-lg bg-secondary text-2xl font-bold text-muted-foreground">
-                  {p.name.charAt(0).toUpperCase()}
+                <div className="aspect-square w-full overflow-hidden">
+                  <ProductAvatar name={p.name} imageUrl={p.image_url} rounded="rounded-none" className="text-3xl" />
                 </div>
-                <div className="mt-2 line-clamp-2 text-sm font-medium">{p.name}</div>
-                <div className="mt-1 text-sm font-semibold text-primary">{formatMoney(Number(p.price))}</div>
+                <div className="p-3">
+                  <div className="line-clamp-2 text-sm font-medium">{p.name}</div>
+                  <div className="mt-1 text-sm font-semibold text-primary">{formatMoney(Number(p.price))}</div>
+                </div>
               </button>
             ))}
           </div>

@@ -20,6 +20,12 @@ interface Product {
   name: string;
   price: number;
   tax_rate: number;
+  image_url: string | null;
+  category_id: string | null;
+}
+interface Category {
+  id: string;
+  name: string;
 }
 interface CartLine {
   product_id: string;
@@ -30,10 +36,13 @@ interface CartLine {
 }
 
 type PaymentMethod = "cash" | "card" | "upi";
+const ALL = "__all__";
 
 function PosPage() {
   const { business, currentBranch, profile, user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCat, setActiveCat] = useState<string>(ALL);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -43,21 +52,28 @@ function PosPage() {
   useEffect(() => {
     if (!business) return;
     void (async () => {
-      const { data } = await supabase
-        .from("products")
-        .select("id,name,price,tax_rate")
-        .eq("business_id", business.id)
-        .eq("is_available", true)
-        .order("name");
-      setProducts((data ?? []) as Product[]);
+      const [{ data: ps }, { data: cs }] = await Promise.all([
+        supabase
+          .from("products")
+          .select("id,name,price,tax_rate,image_url,category_id")
+          .eq("business_id", business.id)
+          .eq("is_available", true)
+          .order("name"),
+        supabase.from("categories").select("id,name").eq("business_id", business.id).order("name"),
+      ]);
+      setProducts((ps ?? []) as Product[]);
+      setCategories((cs ?? []) as Category[]);
     })();
   }, [business?.id]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
-  }, [products, search]);
+    return products.filter((p) => {
+      if (activeCat !== ALL && p.category_id !== activeCat) return false;
+      if (!q) return true;
+      return p.name.toLowerCase().includes(q);
+    });
+  }, [products, search, activeCat]);
 
   const totals = useMemo(() => {
     let subtotal = 0;

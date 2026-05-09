@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Plus, Minus, Trash2, Banknote, CreditCard, Smartphone } from "lucide-react";
 import { formatMoney, generateInvoiceNumber } from "@/lib/format";
 import { toast } from "sonner";
-import { Receipt, type ReceiptData } from "@/components/Receipt";
+import { Receipt, printReceiptWhenReady, type ReceiptData } from "@/components/Receipt";
+import { ProductAvatar } from "@/components/ProductAvatar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/pos")({

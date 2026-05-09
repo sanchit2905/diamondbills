@@ -19,9 +19,13 @@ export interface ReceiptData {
   paymentMethod: string;
 }
 
+/**
+ * Printable thermal receipt. Rendered off-screen on screen,
+ * but visible during print via @media print rules in styles.css.
+ */
 export function Receipt({ data }: { data: ReceiptData }) {
   return (
-    <div id="receipt-print" className="hidden">
+    <div id="receipt-print" className="receipt-print-root" aria-hidden="true">
       <div style={{ textAlign: "center", fontWeight: "bold", fontSize: 14 }}>{data.business.name}</div>
       <div style={{ textAlign: "center", fontSize: 11 }}>{data.branch.name}</div>
       {data.business.address && <div style={{ textAlign: "center", fontSize: 10 }}>{data.business.address}</div>}
@@ -46,8 +50,8 @@ export function Receipt({ data }: { data: ReceiptData }) {
           {data.items.map((it, i) => (
             <tr key={i}>
               <td style={{ paddingTop: 2 }}>{it.name}</td>
-              <td style={{ textAlign: "right" }}>{it.qty}</td>
-              <td style={{ textAlign: "right" }}>{formatMoney(it.qty * it.price)}</td>
+              <td style={{ textAlign: "right", verticalAlign: "top" }}>{it.qty}</td>
+              <td style={{ textAlign: "right", verticalAlign: "top" }}>{formatMoney(it.qty * it.price)}</td>
             </tr>
           ))}
         </tbody>
@@ -72,4 +76,31 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
       <span>{value}</span>
     </div>
   );
+}
+
+/**
+ * Wait for the receipt DOM node to be present and laid out, then print.
+ * Avoids the "blank page" bug where window.print() fires before React has
+ * mounted the receipt content.
+ */
+export function printReceiptWhenReady(timeoutMs = 2000) {
+  if (typeof window === "undefined") return;
+  const start = Date.now();
+  const tick = () => {
+    const el = document.getElementById("receipt-print");
+    if (el && el.childNodes.length > 0) {
+      // wait one more frame so layout is committed
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => window.print());
+      });
+      return;
+    }
+    if (Date.now() - start > timeoutMs) {
+      // give up waiting and try anyway
+      window.print();
+      return;
+    }
+    requestAnimationFrame(tick);
+  };
+  tick();
 }

@@ -230,30 +230,39 @@ export type Database = {
           business_id: string
           category_id: string | null
           created_at: string
+          description: string | null
           id: string
+          image_url: string | null
           is_available: boolean
           name: string
           price: number
+          sku: string | null
           tax_rate: number
         }
         Insert: {
           business_id: string
           category_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
           is_available?: boolean
           name: string
           price?: number
+          sku?: string | null
           tax_rate?: number
         }
         Update: {
           business_id?: string
           category_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
           is_available?: boolean
           name?: string
           price?: number
+          sku?: string | null
           tax_rate?: number
         }
         Relationships: [

@@ -127,18 +127,30 @@
   }
 }
 
-/* ===== Thermal receipt printing ===== */
+/* ===== Thermal receipt printing =====
+   On screen: keep receipt mounted but visually offscreen so React commits
+   it (display:none would prevent print visibility from working).
+   On print: hide the rest of the page and show only the receipt. */
+.receipt-print-root {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 80mm;
+  pointer-events: none;
+  opacity: 0;
+}
 @media print {
   body * { visibility: hidden !important; }
   #receipt-print, #receipt-print * { visibility: visible !important; }
   #receipt-print {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 80mm;
     padding: 4mm;
     color: #000;
     background: #fff;
+    opacity: 1 !important;
     font-family: "Courier New", ui-monospace, monospace;
     font-size: 12px;
     line-height: 1.35;

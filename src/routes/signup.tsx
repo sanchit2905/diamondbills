@@ -50,7 +50,6 @@ function SignupPage() {
       email: form.email,
       password: form.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
         data: { full_name: form.fullName },
       },
     });

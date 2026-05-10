@@ -97,6 +97,8 @@ function Dashboard() {
         <StatCard icon={ShoppingBag} label="Products" value={String(stats?.totalProducts ?? 0)} />
       </div>
 
+      <DebugPanel />
+
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border bg-card p-5">
           <h2 className="font-semibold">Recent orders</h2>

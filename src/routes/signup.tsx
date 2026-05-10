@@ -26,6 +26,7 @@ function SignupPage() {
   const nav = useNavigate();
   const { refresh } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -42,7 +43,9 @@ function SignupPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    setError(null);
 
+    console.log("[signup] starting signup for", form.email);
     const { data: signup, error: signErr } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
@@ -53,11 +56,13 @@ function SignupPage() {
     });
     if (signErr || !signup.user) {
       setBusy(false);
-      toast.error(signErr?.message ?? "Signup failed");
+      const msg = signErr?.message ?? "Signup failed";
+      setError(msg);
+      toast.error(msg);
       return;
     }
+    console.log("[signup] user created", signup.user.id, signup.user.email);
 
-    // Ensure session (auto-confirm is enabled, but be safe)
     if (!signup.session) {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: form.email,
@@ -65,48 +70,40 @@ function SignupPage() {
       });
       if (signInErr) {
         setBusy(false);
+        setError(signInErr.message);
         toast.error(signInErr.message);
         return;
       }
     }
 
-    const userId = signup.user.id;
-
-    // Create business
-    const { data: biz, error: bizErr } = await supabase
-      .from("businesses")
-      .insert({
-        name: form.businessName,
-        business_type: form.businessType as "cafe" | "restaurant" | "salon" | "grocery" | "bakery" | "other",
-        gst_number: form.gst || null,
+    // Call provision-tenant edge function
+    console.log("[signup] invoking provision-tenant…");
+    const { data: prov, error: provErr } = await supabase.functions.invoke("provision-tenant", {
+      body: {
+        businessName: form.businessName,
+        businessType: form.businessType,
+        branchName: form.branchName,
+        gst: form.gst || null,
         phone: form.phone || null,
         address: form.address || null,
-        owner_id: userId,
-      })
-      .select("id")
-      .single();
-    if (bizErr || !biz) {
-      setBusy(false);
-      toast.error(bizErr?.message ?? "Could not create business");
-      return;
-    }
+        fullName: form.fullName,
+      },
+    });
+    console.log("[signup] provision-tenant response", { prov, provErr });
 
-    // Owner role + default branch
-    const [{ error: roleErr }, { error: brErr }] = await Promise.all([
-      supabase.from("user_roles").insert({ user_id: userId, business_id: biz.id, role: "owner" }),
-      supabase.from("branches").insert({
-        business_id: biz.id,
-        name: form.branchName || "Main Branch",
-        address: form.address || null,
-        phone: form.phone || null,
-        is_default: true,
-      }),
-    ]);
-    if (roleErr || brErr) {
+    if (provErr || !prov?.ok) {
       setBusy(false);
-      toast.error((roleErr ?? brErr)?.message ?? "Setup failed");
+      const msg = (prov as { error?: string } | null)?.error ?? provErr?.message ?? "Tenant provisioning failed";
+      setError(msg);
+      toast.error(msg);
       return;
     }
+    console.log("[signup] tenant provisioned", {
+      business_id: prov.business_id,
+      branch_id: prov.branch_id,
+      user_id: prov.user_id,
+      email: prov.email,
+    });
 
     await refresh();
     toast.success("Your store is ready");
@@ -125,6 +122,12 @@ function SignupPage() {
         </Link>
         <h1 className="text-2xl font-semibold">Create your store</h1>
         <p className="mt-1 text-sm text-muted-foreground">Set up your business in under a minute.</p>
+
+        {error && (
+          <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={onSubmit} className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">

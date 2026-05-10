@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney, formatDateTime } from "@/lib/format";
 import { TrendingUp, Receipt, IndianRupee, ShoppingBag } from "lucide-react";
+import { DebugPanel } from "@/components/DebugPanel";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,

@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMoney, formatDateTime } from "@/lib/format";
 import { TrendingUp, Receipt, IndianRupee, ShoppingBag } from "lucide-react";
+import { DebugPanel } from "@/components/DebugPanel";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -95,6 +96,8 @@ function Dashboard() {
         <StatCard icon={Receipt} label="Today's orders" value={String(stats?.todayOrders ?? 0)} />
         <StatCard icon={ShoppingBag} label="Products" value={String(stats?.totalProducts ?? 0)} />
       </div>
+
+      <DebugPanel />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border bg-card p-5">

@@ -1,1 +1,4 @@
 project_id = "rmoexhtnhghizgezcggr"
+
+[functions.provision-tenant]
+verify_jwt = true

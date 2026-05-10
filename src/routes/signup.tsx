@@ -77,9 +77,6 @@ function SignupPage() {
     }
 
     // Call provision-tenant edge function
-    const { data: sessionData } = await supabase.auth.getSession();
-    console.log("SESSION BEFORE INVOKE:", sessionData);
-    console.log("ACCESS TOKEN:", sessionData.session?.access_token);
     console.log("[signup] invoking provision-tenant…");
     const { data: prov, error: provErr } = await supabase.functions.invoke("provision-tenant", {
       body: {

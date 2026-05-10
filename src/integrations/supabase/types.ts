@@ -52,6 +52,33 @@ export type Database = {
           },
         ]
       }
+      business_members: {
+        Row: {
+          branch_id: string | null
+          business_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          business_id: string
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       businesses: {
         Row: {
           address: string | null

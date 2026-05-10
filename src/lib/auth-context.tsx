@@ -50,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [{ data: prof }, { data: roles }] = await Promise.all([
       supabase.from("profiles").select("full_name,email").eq("id", uid).maybeSingle(),
       supabase
-        .from("user_roles")
-        .select("role,business_id")
+        .from("business_members")
+        .select("role,business_id,branch_id")
         .eq("user_id", uid)
         .order("created_at", { ascending: true })
         .limit(1),

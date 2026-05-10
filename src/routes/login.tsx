@@ -18,6 +18,7 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (user) {
     void nav({ to: "/dashboard" });
@@ -26,10 +27,12 @@ function LoginPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setError(null);
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) {
-      toast.error(error.message);
+    if (err) {
+      setError(err.message);
+      toast.error(err.message);
       return;
     }
     toast.success("Welcome back");
@@ -48,12 +51,22 @@ function LoginPage() {
         <h1 className="text-2xl font-semibold">Sign in</h1>
         <p className="mt-1 text-sm text-muted-foreground">Welcome back to your store.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          {error && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <Button type="submit" className="w-full" disabled={busy}>

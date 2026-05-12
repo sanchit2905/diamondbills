@@ -38,7 +38,7 @@ interface CartLine {
 type PaymentMethod = "cash" | "card" | "upi";
 
 function PosPage() {
-  const { business } = useAuth();
+  const { business, currentBranch } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -124,6 +124,7 @@ function PosPage() {
   ) => {
     console.log("CHECKOUT START", {
       business,
+      currentBranch,
       cart,
       total,
       method,
@@ -131,6 +132,11 @@ function PosPage() {
 
     if (!business) {
       toast.error("No business found");
+      return;
+    }
+
+    if (!currentBranch) {
+      toast.error("No branch found");
       return;
     }
 
@@ -145,6 +151,7 @@ function PosPage() {
       .from("orders")
       .insert({
         business_id: business.id,
+        branch_id: currentBranch.id,
         total,
         payment_method: method,
       })

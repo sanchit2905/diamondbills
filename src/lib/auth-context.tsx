@@ -7,17 +7,12 @@ export type AppRole = "owner" | "manager" | "cashier";
 export interface BusinessSummary {
   id: string;
   name: string;
-  business_type: string;
-  gst_number: string | null;
-  address: string | null;
-  phone: string | null;
 }
 
 export interface BranchSummary {
   id: string;
   name: string;
   business_id: string;
-  is_default: boolean;
 }
 
 interface AuthState {
@@ -48,10 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadContext = async (uid: string) => {
     const [{ data: prof }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("full_name,email").eq("id", uid).maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("full_name,email")
+        .eq("id", uid)
+        .maybeSingle(),
+
       supabase
         .from("business_members")
-        .select("role,business_id,branch_id")
+        .select("role,business_id")
         .eq("user_id", uid)
         .order("created_at", { ascending: true })
         .limit(1),
@@ -74,13 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [{ data: biz }, { data: brs }] = await Promise.all([
       supabase
         .from("businesses")
-        .select("id,name,business_type,gst_number,address,phone")
+        .select("id,name")
         .eq("id", r.business_id)
         .maybeSingle(),
 
       supabase
         .from("branches")
-        .select("id,name,business_id,is_default")
+        .select("id,name,business_id")
         .eq("business_id", r.business_id)
         .order("created_at", { ascending: true }),
     ]);
@@ -98,7 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const found =
       list.find((b) => b.id === stored) ??
-      list.find((b) => b.is_default) ??
       list[0] ??
       null;
 

@@ -198,7 +198,6 @@ export type Database = {
           created_at: string
           discount: number
           id: string
-          invoice_number: string
           payment_method: Database["public"]["Enums"]["payment_method"]
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
@@ -213,7 +212,6 @@ export type Database = {
           created_at?: string
           discount?: number
           id?: string
-          invoice_number: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -228,7 +226,6 @@ export type Database = {
           created_at?: string
           discount?: number
           id?: string
-          invoice_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number

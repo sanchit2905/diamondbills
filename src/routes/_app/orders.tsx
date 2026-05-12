@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_app/orders")({
 
 interface Order {
   id: string;
-  invoice_number: string;
+  
   subtotal: number;
   tax: number;
   discount: number;
@@ -34,7 +34,7 @@ function OrdersPage() {
     void (async () => {
       const { data } = await supabase
         .from("orders")
-        .select("id,invoice_number,subtotal,tax,discount,total,payment_method,status,cashier_name,created_at")
+        .select("id,subtotal,tax,discount,total,payment_method,status,cashier_name,created_at")
         .eq("business_id", business.id)
         .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: false })
@@ -52,7 +52,7 @@ function OrdersPage() {
     setReprint({
       business,
       branch: currentBranch,
-      invoiceNumber: o.invoice_number,
+      invoiceNumber: `#${o.id.slice(0, 8).toUpperCase()}`,
       createdAt: o.created_at,
       cashierName: o.cashier_name ?? "Cashier",
       items: (items ?? []).map((it: { name: string; quantity: number; price: number; tax_rate: number }) => ({
@@ -94,7 +94,7 @@ function OrdersPage() {
             <tbody className="divide-y">
               {orders.map((o) => (
                 <tr key={o.id}>
-                  <td className="px-4 py-3 font-medium">{o.invoice_number}</td>
+                  <td className="px-4 py-3 font-medium">#{o.id.slice(0, 8).toUpperCase()}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateTime(o.created_at)}</td>
                   <td className="px-4 py-3">{o.cashier_name}</td>
                   <td className="px-4 py-3 uppercase">{o.payment_method}</td>

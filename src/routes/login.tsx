@@ -47,6 +47,7 @@ function LoginPage() {
     }
 
     toast.success("Welcome back");
+
     void nav({ to: "/dashboard" });
   };
 

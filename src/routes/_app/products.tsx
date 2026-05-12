@@ -326,18 +326,14 @@ function ProductDialog({
       }
 
       const payload = {
-        business_id: businessId,
-        name: name.trim(),
-        description: desc.trim() || null,
-        price: Number(price) || 0,
-        tax_rate: Number(tax) || 0,
-        sku: sku.trim() || null,
-        category_id: categoryId === NONE ? null : categoryId,
-        image_url: finalImageUrl,
-      };
-      const { error } = product
-        ? await supabase.from("products").update(payload).eq("id", product.id)
-        : await supabase.from("products").insert({ ...payload, is_available: true });
+  business_id: businessId,
+  name: name.trim(),
+  price: Number(price) || 0,
+};
+
+const { error } = product
+  ? await supabase.from("products").update(payload).eq("id", product.id)
+  : await supabase.from("products").insert(payload);
       if (error) throw error;
       toast.success("Saved");
       onSaved();

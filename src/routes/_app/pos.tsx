@@ -58,8 +58,9 @@ function PosPage() {
     void (async () => {
       const { data: ps } = await supabase
         .from("products")
-        .select("id,name,price,business_id,created_at")
+        .select("id,name,price")
         .eq("business_id", business.id)
+        .eq("is_available", true)
         .order("name");
 
       setProducts((ps ?? []) as Product[]);

@@ -49,28 +49,7 @@ function Dashboard() {
         .select("id", { count: "exact", head: true })
         .eq("business_id", business.id);
 
-      // Top products in last 30 days
-      const since = new Date();
-      since.setDate(since.getDate() - 30);
-      const { data: items } = await supabase
-        .from("order_items")
-        .select("name,quantity,line_total,orders!inner(business_id,branch_id,created_at,status)")
-        .eq("orders.business_id", business.id)
-        .eq("orders.branch_id", currentBranch.id)
-        .eq("orders.status", "completed")
-        .gte("orders.created_at", since.toISOString());
-
-      const map = new Map<string, { qty: number; revenue: number }>();
-      (items ?? []).forEach((it: { name: string; quantity: number; line_total: number }) => {
-        const cur = map.get(it.name) ?? { qty: 0, revenue: 0 };
-        cur.qty += it.quantity;
-        cur.revenue += Number(it.line_total);
-        map.set(it.name, cur);
-      });
-      const top = [...map.entries()]
-        .map(([name, v]) => ({ name, ...v }))
-        .sort((a, b) => b.qty - a.qty)
-        .slice(0, 5);
+      const top: Array<{ name: string; qty: number; revenue: number }> = [];
 
       setStats({
         todaySales: (todays ?? []).reduce((a, o) => a + Number(o.total), 0),

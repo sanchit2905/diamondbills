@@ -106,26 +106,49 @@ function SignupPage() {
       .from("businesses")
       .insert({
         name: form.businessName,
+        owner_id: signup.user.id,
+        business_type: form.businessType as "cafe" | "restaurant" | "salon" | "grocery" | "bakery" | "other",
+        gst_number: form.gst || null,
+        phone: form.phone || null,
+        address: form.address || null,
       })
       .select()
       .single();
 
     if (bizErr || !biz) {
       setBusy(false);
-      toast.error("Failed creating business");
+      toast.error(bizErr?.message ?? "Failed creating business");
       return;
     }
 
-    await supabase.from("branches").insert({
-      business_id: biz.id,
-      name: form.branchName,
-    });
+    const { data: branch, error: brErr } = await supabase
+      .from("branches")
+      .insert({
+        business_id: biz.id,
+        name: form.branchName || "Main Branch",
+        is_default: true,
+      })
+      .select()
+      .single();
 
-    await supabase.from("business_members").insert({
+    if (brErr) {
+      setBusy(false);
+      toast.error(brErr.message);
+      return;
+    }
+
+    const { error: memErr } = await supabase.from("business_members").insert({
       user_id: signup.user.id,
       business_id: biz.id,
+      branch_id: branch?.id ?? null,
       role: "owner",
     });
+
+    if (memErr) {
+      setBusy(false);
+      toast.error(memErr.message);
+      return;
+    }
 
     await refresh();
 

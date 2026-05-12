@@ -7,6 +7,10 @@ export type AppRole = "owner" | "manager" | "cashier";
 export interface BusinessSummary {
   id: string;
   name: string;
+  business_type: "cafe" | "restaurant" | "salon" | "grocery" | "bakery" | "other";
+  gst_number: string | null;
+  address: string | null;
+  phone: string | null;
 }
 
 export interface BranchSummary {
@@ -74,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [{ data: biz }, { data: brs }] = await Promise.all([
       supabase
         .from("businesses")
-        .select("id,name")
+        .select("id,name,business_type,gst_number,address,phone")
         .eq("id", r.business_id)
         .maybeSingle(),
 

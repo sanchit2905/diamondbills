@@ -141,7 +141,7 @@ function PosPage() {
 
     const { data: order, error } = await supabase
       .from("orders")
-      ..insert({
+      .insert({
   business_id: business.id,
   invoice_number: invoice,
   subtotal: totals.subtotal,

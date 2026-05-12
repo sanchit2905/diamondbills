@@ -44,12 +44,11 @@ interface CartLine {
 type PaymentMethod = "cash" | "card" | "upi";
 
 function PosPage() {
-  const { business, currentBranch, profile, user } = useAuth();
+  const { business, currentBranch, profile } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [discount, setDiscount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
@@ -77,21 +76,15 @@ function PosPage() {
     });
   }, [products, search]);
 
-  const totals = useMemo(() => {
-    let subtotal = 0;
-    let tax = 0;
+  const total = useMemo(() => {
+    let t = 0;
 
     cart.forEach((l) => {
-      const line = l.price * l.qty;
-
-      subtotal += line;
-      tax += (line * l.tax_rate) / 100;
+      t += l.price * l.qty;
     });
 
-    const total = Math.max(0, subtotal + tax - discount);
-
-    return { subtotal, tax, total };
-  }, [cart, discount]);
+    return t;
+  }, [cart]);
 
   const addToCart = (p: Product) => {
     setCart((c) => {
@@ -142,15 +135,11 @@ function PosPage() {
     const { data: order, error } = await supabase
       .from("orders")
       .insert({
-  business_id: business.id,
-  invoice_number: invoice,
-  subtotal: totals.subtotal,
-  tax: totals.tax,
-  discount,
-  total: totals.total,
-  payment_method: method,
-  status: "completed",
-  })
+        business_id: business.id,
+        invoice_number: invoice,
+        total: total,
+        payment_method: method,
+      })
       .select("id,invoice_number,created_at")
       .single();
 
@@ -168,9 +157,7 @@ function PosPage() {
       name: l.name,
       quantity: l.qty,
       price: l.price,
-      tax_rate: l.tax_rate,
-      line_total:
-        l.price * l.qty * (1 + l.tax_rate / 100),
+      line_total: l.price * l.qty,
     }));
 
     const { error: itemErr } = await supabase
@@ -198,17 +185,16 @@ function PosPage() {
         name: l.name,
         qty: l.qty,
         price: l.price,
-        tax_rate: l.tax_rate,
+        tax_rate: 0,
       })),
-      subtotal: totals.subtotal,
-      tax: totals.tax,
-      discount,
-      total: totals.total,
+      subtotal: total,
+      tax: 0,
+      discount: 0,
+      total: total,
       paymentMethod: method,
     });
 
     setCart([]);
-    setDiscount(0);
 
     printReceiptWhenReady();
   };
@@ -357,39 +343,10 @@ function PosPage() {
         </div>
 
         <div className="space-y-3 border-t p-4">
-          <div className="flex items-center justify-between text-sm">
-            <span>Subtotal</span>
-            <span>{formatMoney(totals.subtotal)}</span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <span>Tax</span>
-            <span>{formatMoney(totals.tax)}</span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <label htmlFor="discount">
-              Discount
-            </label>
-
-            <Input
-              id="discount"
-              type="number"
-              step="0.01"
-              className="h-8 w-24 text-right"
-              value={discount || ""}
-              onChange={(e) =>
-                setDiscount(
-                  Number(e.target.value) || 0
-                )
-              }
-            />
-          </div>
-
           <div className="flex items-center justify-between border-t pt-3 text-lg font-bold">
             <span>Total</span>
 
-            <span>{formatMoney(totals.total)}</span>
+            <span>{formatMoney(total)}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 pt-2">

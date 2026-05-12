@@ -126,7 +126,7 @@ function PosPage() {
     );
 
   const checkout = async (method: PaymentMethod) => {
-    if (!business || cart.length === 0) return;
+    if (!business || !currentBranch || cart.length === 0) return;
 
     setBusy(true);
 
@@ -136,9 +136,12 @@ function PosPage() {
       .from("orders")
       .insert({
         business_id: business.id,
+        branch_id: currentBranch.id,
         invoice_number: invoice,
+        subtotal: total,
         total: total,
         payment_method: method,
+        cashier_name: profile?.full_name || profile?.email || null,
       })
       .select("id,invoice_number,created_at")
       .single();

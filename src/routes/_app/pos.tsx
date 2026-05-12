@@ -4,10 +4,22 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Minus, Trash2, Banknote, CreditCard, Smartphone } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  Banknote,
+  CreditCard,
+  Smartphone,
+} from "lucide-react";
 import { formatMoney, generateInvoiceNumber } from "@/lib/format";
 import { toast } from "sonner";
-import { Receipt, printReceiptWhenReady, type ReceiptData } from "@/components/Receipt";
+import {
+  Receipt,
+  printReceiptWhenReady,
+  type ReceiptData,
+} from "@/components/Receipt";
 import { ProductAvatar } from "@/components/ProductAvatar";
 import { cn } from "@/lib/utils";
 
@@ -19,14 +31,8 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  tax_rate: number;
-  image_url: string | null;
-  category_id: string | null;
 }
-interface Category {
-  id: string;
-  name: string;
-}
+
 interface CartLine {
   product_id: string;
   name: string;
@@ -36,13 +42,11 @@ interface CartLine {
 }
 
 type PaymentMethod = "cash" | "card" | "upi";
-const ALL = "__all__";
 
 function PosPage() {
   const { business, currentBranch, profile, user } = useAuth();
+
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCat, setActiveCat] = useState<string>(ALL);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -51,60 +55,90 @@ function PosPage() {
 
   useEffect(() => {
     if (!business) return;
+
     void (async () => {
-      const [{ data: ps }, { data: cs }] = await Promise.all([
-        supabase
-          .from("products")
-          .select("id,name,price,tax_rate,image_url,category_id")
-          .eq("business_id", business.id)
-          .eq("is_available", true)
-          .order("name"),
-        supabase.from("categories").select("id,name").eq("business_id", business.id).order("name"),
-      ]);
+      const { data: ps } = await supabase
+        .from("products")
+        .select("id,name,price,business_id,created_at")
+        .eq("business_id", business.id)
+        .order("name");
+
       setProducts((ps ?? []) as Product[]);
-      setCategories((cs ?? []) as Category[]);
     })();
   }, [business?.id]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+
     return products.filter((p) => {
-      if (activeCat !== ALL && p.category_id !== activeCat) return false;
       if (!q) return true;
+
       return p.name.toLowerCase().includes(q);
     });
-  }, [products, search, activeCat]);
+  }, [products, search]);
 
   const totals = useMemo(() => {
     let subtotal = 0;
     let tax = 0;
+
     cart.forEach((l) => {
       const line = l.price * l.qty;
+
       subtotal += line;
       tax += (line * l.tax_rate) / 100;
     });
+
     const total = Math.max(0, subtotal + tax - discount);
+
     return { subtotal, tax, total };
   }, [cart, discount]);
 
   const addToCart = (p: Product) => {
     setCart((c) => {
       const i = c.findIndex((l) => l.product_id === p.id);
+
       if (i >= 0) {
         const copy = [...c];
-        copy[i] = { ...copy[i], qty: copy[i].qty + 1 };
+
+        copy[i] = {
+          ...copy[i],
+          qty: copy[i].qty + 1,
+        };
+
         return copy;
       }
-      return [...c, { product_id: p.id, name: p.name, price: Number(p.price), tax_rate: Number(p.tax_rate), qty: 1 }];
+
+      return [
+        ...c,
+        {
+          product_id: p.id,
+          name: p.name,
+          price: Number(p.price),
+          tax_rate: 0,
+          qty: 1,
+        },
+      ];
     });
   };
+
   const setQty = (id: string, qty: number) =>
-    setCart((c) => c.map((l) => (l.product_id === id ? { ...l, qty: Math.max(0, qty) } : l)).filter((l) => l.qty > 0));
+    setCart((c) =>
+      c
+        .map((l) =>
+          l.product_id === id
+            ? { ...l, qty: Math.max(0, qty) }
+            : l
+        )
+        .filter((l) => l.qty > 0)
+    );
 
   const checkout = async (method: PaymentMethod) => {
     if (!business || !currentBranch || cart.length === 0) return;
+
     setBusy(true);
+
     const invoice = generateInvoiceNumber(currentBranch.name);
+
     const { data: order, error } = await supabase
       .from("orders")
       .insert({
@@ -118,14 +152,22 @@ function PosPage() {
         payment_method: method,
         status: "completed",
         cashier_id: user?.id,
-        cashier_name: profile?.full_name || profile?.email || "Cashier",
+        cashier_name:
+          profile?.full_name ||
+          profile?.email ||
+          "Cashier",
       })
       .select("id,invoice_number,created_at")
       .single();
+
     if (error || !order) {
       setBusy(false);
-      return toast.error(error?.message ?? "Could not create order");
+
+      return toast.error(
+        error?.message ?? "Could not create order"
+      );
     }
+
     const items = cart.map((l) => ({
       order_id: order.id,
       product_id: l.product_id,
@@ -133,37 +175,56 @@ function PosPage() {
       quantity: l.qty,
       price: l.price,
       tax_rate: l.tax_rate,
-      line_total: l.price * l.qty * (1 + l.tax_rate / 100),
+      line_total:
+        l.price * l.qty * (1 + l.tax_rate / 100),
     }));
-    const { error: itemErr } = await supabase.from("order_items").insert(items);
+
+    const { error: itemErr } = await supabase
+      .from("order_items")
+      .insert(items);
+
     setBusy(false);
-    if (itemErr) return toast.error(itemErr.message);
+
+    if (itemErr) {
+      return toast.error(itemErr.message);
+    }
+
     toast.success("Payment successful");
+
     setReceipt({
       business: business!,
       branch: currentBranch!,
       invoiceNumber: order.invoice_number,
       createdAt: order.created_at,
-      cashierName: profile?.full_name || profile?.email || "Cashier",
-      items: cart.map((l) => ({ name: l.name, qty: l.qty, price: l.price, tax_rate: l.tax_rate })),
+      cashierName:
+        profile?.full_name ||
+        profile?.email ||
+        "Cashier",
+      items: cart.map((l) => ({
+        name: l.name,
+        qty: l.qty,
+        price: l.price,
+        tax_rate: l.tax_rate,
+      })),
       subtotal: totals.subtotal,
       tax: totals.tax,
       discount,
       total: totals.total,
       paymentMethod: method,
     });
+
     setCart([]);
     setDiscount(0);
-    // auto print once the receipt is mounted in the DOM
+
     printReceiptWhenReady();
   };
 
   return (
     <div className="grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[1fr_400px]">
-      {/* Product grid */}
       <div className="flex flex-col overflow-hidden p-4 md:p-6">
         <div className="relative mb-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
           <Input
             placeholder="Search products…"
             value={search}
@@ -171,31 +232,12 @@ function PosPage() {
             className="h-11 pl-9"
           />
         </div>
-        {categories.length > 0 && (
-          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-            <Button
-              size="sm"
-              variant={activeCat === ALL ? "default" : "outline"}
-              onClick={() => setActiveCat(ALL)}
-            >
-              All
-            </Button>
-            {categories.map((c) => (
-              <Button
-                key={c.id}
-                size="sm"
-                variant={activeCat === c.id ? "default" : "outline"}
-                onClick={() => setActiveCat(c.id)}
-                className="whitespace-nowrap"
-              >
-                {c.name}
-              </Button>
-            ))}
-          </div>
-        )}
+
         {filtered.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            {products.length === 0 ? "No products yet — add some in Products." : "No matches"}
+            {products.length === 0
+              ? "No products yet — add some in Products."
+              : "No matches"}
           </div>
         ) : (
           <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto pb-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -206,11 +248,22 @@ function PosPage() {
                 className="group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
               >
                 <div className="aspect-square w-full overflow-hidden">
-                  <ProductAvatar name={p.name} imageUrl={p.image_url} rounded="rounded-none" className="text-3xl" />
+                  <ProductAvatar
+                    name={p.name}
+                    imageUrl={null}
+                    rounded="rounded-none"
+                    className="text-3xl"
+                  />
                 </div>
+
                 <div className="p-3">
-                  <div className="line-clamp-2 text-sm font-medium">{p.name}</div>
-                  <div className="mt-1 text-sm font-semibold text-primary">{formatMoney(Number(p.price))}</div>
+                  <div className="line-clamp-2 text-sm font-medium">
+                    {p.name}
+                  </div>
+
+                  <div className="mt-1 text-sm font-semibold text-primary">
+                    {formatMoney(Number(p.price))}
+                  </div>
                 </div>
               </button>
             ))}
@@ -218,19 +271,30 @@ function PosPage() {
         )}
       </div>
 
-      {/* Cart */}
       <aside className="flex flex-col border-t bg-card lg:border-l lg:border-t-0">
         <div className="flex items-center justify-between border-b p-4">
           <div>
-            <h2 className="font-semibold">Current order</h2>
-            <p className="text-xs text-muted-foreground">{cart.length} item{cart.length === 1 ? "" : "s"}</p>
+            <h2 className="font-semibold">
+              Current order
+            </h2>
+
+            <p className="text-xs text-muted-foreground">
+              {cart.length} item
+              {cart.length === 1 ? "" : "s"}
+            </p>
           </div>
+
           {cart.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setCart([])}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCart([])}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
+
         <div className="flex-1 overflow-auto">
           {cart.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
@@ -239,20 +303,56 @@ function PosPage() {
           ) : (
             <div className="divide-y">
               {cart.map((l) => (
-                <div key={l.product_id} className="p-4">
+                <div
+                  key={l.product_id}
+                  className="p-4"
+                >
                   <div className="flex justify-between">
                     <div>
-                      <div className="text-sm font-medium">{l.name}</div>
-                      <div className="text-xs text-muted-foreground">{formatMoney(l.price)} · GST {l.tax_rate}%</div>
+                      <div className="text-sm font-medium">
+                        {l.name}
+                      </div>
+
+                      <div className="text-xs text-muted-foreground">
+                        {formatMoney(l.price)}
+                      </div>
                     </div>
-                    <div className="text-sm font-semibold">{formatMoney(l.price * l.qty)}</div>
+
+                    <div className="text-sm font-semibold">
+                      {formatMoney(l.price * l.qty)}
+                    </div>
                   </div>
+
                   <div className="mt-2 flex items-center gap-2">
-                    <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.product_id, l.qty - 1)}>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      onClick={() =>
+                        setQty(
+                          l.product_id,
+                          l.qty - 1
+                        )
+                      }
+                    >
                       <Minus className="h-3 w-3" />
                     </Button>
-                    <span className="w-8 text-center text-sm">{l.qty}</span>
-                    <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.product_id, l.qty + 1)}>
+
+                    <span className="w-8 text-center text-sm">
+                      {l.qty}
+                    </span>
+
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7"
+                      onClick={() =>
+                        setQty(
+                          l.product_id,
+                          l.qty + 1
+                        )
+                      }
+                    >
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
@@ -264,36 +364,69 @@ function PosPage() {
 
         <div className="space-y-3 border-t p-4">
           <div className="flex items-center justify-between text-sm">
-            <span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span>
+            <span>Subtotal</span>
+            <span>{formatMoney(totals.subtotal)}</span>
           </div>
+
           <div className="flex items-center justify-between text-sm">
-            <span>Tax</span><span>{formatMoney(totals.tax)}</span>
+            <span>Tax</span>
+            <span>{formatMoney(totals.tax)}</span>
           </div>
+
           <div className="flex items-center justify-between text-sm">
-            <label htmlFor="discount">Discount</label>
+            <label htmlFor="discount">
+              Discount
+            </label>
+
             <Input
               id="discount"
               type="number"
               step="0.01"
               className="h-8 w-24 text-right"
               value={discount || ""}
-              onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+              onChange={(e) =>
+                setDiscount(
+                  Number(e.target.value) || 0
+                )
+              }
             />
           </div>
+
           <div className="flex items-center justify-between border-t pt-3 text-lg font-bold">
-            <span>Total</span><span>{formatMoney(totals.total)}</span>
+            <span>Total</span>
+
+            <span>{formatMoney(totals.total)}</span>
           </div>
+
           <div className="grid grid-cols-3 gap-2 pt-2">
             {([
-              { m: "cash", l: "Cash", I: Banknote },
-              { m: "card", l: "Card", I: CreditCard },
-              { m: "upi", l: "UPI", I: Smartphone },
+              {
+                m: "cash",
+                l: "Cash",
+                I: Banknote,
+              },
+              {
+                m: "card",
+                l: "Card",
+                I: CreditCard,
+              },
+              {
+                m: "upi",
+                l: "UPI",
+                I: Smartphone,
+              },
             ] as const).map((b) => (
               <Button
                 key={b.m}
-                disabled={busy || cart.length === 0}
+                disabled={
+                  busy || cart.length === 0
+                }
                 onClick={() => checkout(b.m)}
-                className={cn("h-12 flex-col gap-0.5 text-xs", b.m === "cash" && "bg-[image:var(--gradient-primary)]")}
+                className={cn(
+                  "h-12 flex-col gap-0.5 text-xs",
+                  b.m === "cash" &&
+                    "bg-[image:var(--gradient-primary)]"
+                )}
               >
                 <b.I className="h-4 w-4" />
                 {b.l}

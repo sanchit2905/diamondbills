@@ -43,24 +43,15 @@ function OrdersPage() {
     })();
   }, [business?.id, currentBranch?.id]);
 
-  const printAgain = async (o: Order) => {
+  const printAgain = (o: Order) => {
     if (!business || !currentBranch) return;
-    const { data: items } = await supabase
-      .from("order_items")
-      .select("name,quantity,price,tax_rate")
-      .eq("order_id", o.id);
     setReprint({
       business,
       branch: currentBranch,
       invoiceNumber: `#${o.id.slice(0, 8).toUpperCase()}`,
       createdAt: o.created_at,
       cashierName: o.cashier_name ?? "Cashier",
-      items: (items ?? []).map((it: { name: string; quantity: number; price: number; tax_rate: number }) => ({
-        name: it.name,
-        qty: it.quantity,
-        price: Number(it.price),
-        tax_rate: Number(it.tax_rate),
-      })),
+      items: [],
       subtotal: Number(o.subtotal),
       tax: Number(o.tax),
       discount: Number(o.discount),

@@ -136,39 +136,16 @@ function PosPage() {
       .insert({
         business_id: business.id,
         branch_id: currentBranch.id,
-        subtotal: total,
         total: total,
         payment_method: method,
-        cashier_name: profile?.full_name || profile?.email || null,
       })
       .select("id,created_at")
       .single();
 
-    if (error || !order) {
-      setBusy(false);
-
-      return toast.error(
-        error?.message ?? "Could not create order"
-      );
-    }
-
-    const items = cart.map((l) => ({
-      order_id: order.id,
-      product_id: l.product_id,
-      name: l.name,
-      quantity: l.qty,
-      price: l.price,
-      line_total: l.price * l.qty,
-    }));
-
-    const { error: itemErr } = await supabase
-      .from("order_items")
-      .insert(items);
-
     setBusy(false);
 
-    if (itemErr) {
-      return toast.error(itemErr.message);
+    if (error || !order) {
+      return toast.error(error?.message ?? "Could not create order");
     }
 
     toast.success("Payment successful");

@@ -1,13 +1,33 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+
+import type {
+  Session,
+  User,
+} from "@supabase/supabase-js";
+
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "owner" | "manager" | "cashier";
+export type AppRole =
+  | "owner"
+  | "manager"
+  | "cashier";
 
 export interface BusinessSummary {
   id: string;
   name: string;
-  business_type: "cafe" | "restaurant" | "salon" | "grocery" | "bakery" | "other";
+  business_type:
+    | "cafe"
+    | "restaurant"
+    | "salon"
+    | "grocery"
+    | "bakery"
+    | "other";
   gst_number: string | null;
   address: string | null;
   phone: string | null;
@@ -23,30 +43,75 @@ interface AuthState {
   loading: boolean;
   user: User | null;
   session: Session | null;
-  profile: { full_name: string | null; email: string | null } | null;
+  profile: {
+    full_name: string | null;
+    email: string | null;
+  } | null;
+
   business: BusinessSummary | null;
+
   branches: BranchSummary[];
+
   currentBranch: BranchSummary | null;
+
   role: AppRole | null;
-  setCurrentBranch: (b: BranchSummary) => void;
+
+  setCurrentBranch: (
+    b: BranchSummary
+  ) => void;
+
   refresh: () => Promise<void>;
+
   signOut: () => Promise<void>;
 }
 
-const AuthCtx = createContext<AuthState | null>(null);
+const AuthCtx =
+  createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<AuthState["profile"]>(null);
-  const [business, setBusiness] = useState<BusinessSummary | null>(null);
-  const [branches, setBranches] = useState<BranchSummary[]>([]);
-  const [currentBranch, setCurrentBranchState] = useState<BranchSummary | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
+export function AuthProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [loading, setLoading] =
+    useState(true);
 
-  const loadContext = async (uid: string) => {
-    const [{ data: prof }, { data: roles }] = await Promise.all([
+  const [user, setUser] =
+    useState<User | null>(null);
+
+  const [session, setSession] =
+    useState<Session | null>(null);
+
+  const [profile, setProfile] =
+    useState<AuthState["profile"]>(
+      null
+    );
+
+  const [business, setBusiness] =
+    useState<BusinessSummary | null>(
+      null
+    );
+
+  const [branches, setBranches] =
+    useState<BranchSummary[]>([]);
+
+  const [
+    currentBranch,
+    setCurrentBranchState,
+  ] = useState<BranchSummary | null>(
+    null
+  );
+
+  const [role, setRole] =
+    useState<AppRole | null>(null);
+
+  const loadContext = async (
+    uid: string
+  ) => {
+    const [
+      { data: prof },
+      { data: roles },
+    ] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name,email")
@@ -57,13 +122,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from("business_members")
         .select("role,business_id")
         .eq("user_id", uid)
-        .order("created_at", { ascending: true })
+        .order("created_at", {
+          ascending: true,
+        })
         .limit(1),
     ]);
 
     setProfile(prof ?? null);
 
-    if (!roles || roles.length === 0) {
+    if (
+      !roles ||
+      roles.length === 0
+    ) {
       setBusiness(null);
       setBranches([]);
       setCurrentBranchState(null);
@@ -75,76 +145,130 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setRole(r.role as AppRole);
 
-    const [{ data: biz }, { data: brs }] = await Promise.all([
+    const [
+      { data: biz },
+      { data: brs },
+    ] = await Promise.all([
       supabase
         .from("businesses")
-        .select("id,name,business_type,gst_number,address,phone")
+        .select(
+          "id,name,business_type,gst_number,address,phone"
+        )
         .eq("id", r.business_id)
         .maybeSingle(),
 
       supabase
         .from("branches")
-        .select("id,name,business_id")
-        .eq("business_id", r.business_id)
-        .order("created_at", { ascending: true }),
+        .select(
+          "id,name,business_id"
+        )
+        .eq(
+          "business_id",
+          r.business_id
+        )
+        .order("created_at", {
+          ascending: true,
+        }),
     ]);
 
-    setBusiness(biz as BusinessSummary | null);
+    setBusiness(
+      biz as BusinessSummary | null
+    );
 
-    const list = (brs ?? []) as BranchSummary[];
+    const list =
+      (brs ?? []) as BranchSummary[];
 
     setBranches(list);
 
     const stored =
       typeof window !== "undefined"
-        ? localStorage.getItem("pos.branch")
+        ? localStorage.getItem(
+            "pos.branch"
+          )
         : null;
 
     const found =
-      list.find((b) => b.id === stored) ??
+      list.find(
+        (b) =>
+          String(b.id) ===
+          String(stored)
+      ) ??
       list[0] ??
       null;
 
     setCurrentBranchState(found);
+
+    if (
+      found &&
+      typeof window !== "undefined"
+    ) {
+      localStorage.setItem(
+        "pos.branch",
+        String(found.id)
+      );
+    }
   };
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
+    const { data: sub } =
+      supabase.auth.onAuthStateChange(
+        (_e, s) => {
+          setSession(s);
 
-      if (s?.user) {
-        setTimeout(() => {
-          void loadContext(s.user.id);
-        }, 0);
-      } else {
-        setProfile(null);
-        setBusiness(null);
-        setBranches([]);
-        setCurrentBranchState(null);
-        setRole(null);
-      }
-    });
+          setUser(s?.user ?? null);
 
-    void supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+          if (s?.user) {
+            setTimeout(() => {
+              void loadContext(
+                s.user.id
+              );
+            }, 0);
+          } else {
+            setProfile(null);
+            setBusiness(null);
+            setBranches([]);
+            setCurrentBranchState(
+              null
+            );
+            setRole(null);
+          }
+        }
+      );
 
-      if (data.session?.user) {
-        await loadContext(data.session.user.id);
-      }
+    void supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        setSession(data.session);
 
-      setLoading(false);
-    });
+        setUser(
+          data.session?.user ?? null
+        );
 
-    return () => sub.subscription.unsubscribe();
+        if (data.session?.user) {
+          await loadContext(
+            data.session.user.id
+          );
+        }
+
+        setLoading(false);
+      });
+
+    return () =>
+      sub.subscription.unsubscribe();
   }, []);
 
-  const setCurrentBranch = (b: BranchSummary) => {
+  const setCurrentBranch = (
+    b: BranchSummary
+  ) => {
     setCurrentBranchState(b);
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("pos.branch", b.id);
+    if (
+      typeof window !== "undefined"
+    ) {
+      localStorage.setItem(
+        "pos.branch",
+        String(b.id)
+      );
     }
   };
 
@@ -183,7 +307,9 @@ export function useAuth() {
   const ctx = useContext(AuthCtx);
 
   if (!ctx) {
-    throw new Error("useAuth must be used within AuthProvider");
+    throw new Error(
+      "useAuth must be used within AuthProvider"
+    );
   }
 
   return ctx;

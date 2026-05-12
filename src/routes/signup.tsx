@@ -85,21 +85,21 @@ function SignupPage() {
       return;
     }
 
-    if (!signup.session) {
-      const { error: signInErr } =
-        await supabase.auth.signInWithPassword({
-          email: form.email,
-          password: form.password,
-        });
+    const { data: signInData, error: signInErr } =
+      await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
 
-      if (signInErr) {
-        setBusy(false);
+    if (signInErr || !signInData.session) {
+      setBusy(false);
 
-        setError(signInErr.message);
-        toast.error(signInErr.message);
+      const msg = signInErr?.message ?? "Auto login failed";
 
-        return;
-      }
+      setError(msg);
+      toast.error(msg);
+
+      return;
     }
 
     const { data: prov, error: provErr } =
@@ -204,12 +204,6 @@ function SignupPage() {
                 set("password", e.target.value)
               }
             />
-          </div>
-
-          <div className="space-y-2 md:col-span-2 mt-2 border-t pt-4">
-            <Label className="text-base font-semibold">
-              Business
-            </Label>
           </div>
 
           <div className="space-y-2">

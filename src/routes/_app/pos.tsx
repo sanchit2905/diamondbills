@@ -15,11 +15,6 @@ import {
 } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { toast } from "sonner";
-import {
-  Receipt,
-  printReceiptWhenReady,
-  type ReceiptData,
-} from "@/components/Receipt";
 import { ProductAvatar } from "@/components/ProductAvatar";
 import { cn } from "@/lib/utils";
 
@@ -37,69 +32,64 @@ interface CartLine {
   product_id: string;
   name: string;
   price: number;
-  tax_rate: number;
   qty: number;
 }
 
 type PaymentMethod = "cash" | "card" | "upi";
 
 function PosPage() {
-  const { business, currentBranch, profile } = useAuth();
+  const { business } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [busy, setBusy] = useState(false);
-  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
   useEffect(() => {
     if (!business) return;
 
     void (async () => {
-      const { data: ps } = await supabase
+      const { data, error } = await supabase
         .from("products")
-        .select("id,name,price")
+        .select("id,name,price,business_id")
         .eq("business_id", business.id)
-        .eq("is_available", true)
         .order("name");
 
-      setProducts((ps ?? []) as Product[]);
+      console.log("PRODUCTS", { data, error });
+
+      if (data) {
+        setProducts(data as Product[]);
+      }
     })();
-  }, [business?.id]);
+  }, [business]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    return products.filter((p) => {
-      if (!q) return true;
-
-      return p.name.toLowerCase().includes(q);
-    });
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(q)
+    );
   }, [products, search]);
 
   const total = useMemo(() => {
-    let t = 0;
-
-    cart.forEach((l) => {
-      t += l.price * l.qty;
-    });
-
-    return t;
+    return cart.reduce(
+      (sum, item) => sum + item.price * item.qty,
+      0
+    );
   }, [cart]);
 
   const addToCart = (p: Product) => {
     setCart((c) => {
-      const i = c.findIndex((l) => l.product_id === p.id);
+      const existing = c.find(
+        (x) => x.product_id === p.id
+      );
 
-      if (i >= 0) {
-        const copy = [...c];
-
-        copy[i] = {
-          ...copy[i],
-          qty: copy[i].qty + 1,
-        };
-
-        return copy;
+      if (existing) {
+        return c.map((x) =>
+          x.product_id === p.id
+            ? { ...x, qty: x.qty + 1 }
+            : x
+        );
       }
 
       return [
@@ -108,26 +98,46 @@ function PosPage() {
           product_id: p.id,
           name: p.name,
           price: Number(p.price),
-          tax_rate: 0,
           qty: 1,
         },
       ];
     });
   };
 
-  const setQty = (id: string, qty: number) =>
+  const setQty = (
+    product_id: string,
+    qty: number
+  ) => {
     setCart((c) =>
       c
-        .map((l) =>
-          l.product_id === id
-            ? { ...l, qty: Math.max(0, qty) }
-            : l
+        .map((x) =>
+          x.product_id === product_id
+            ? { ...x, qty }
+            : x
         )
-        .filter((l) => l.qty > 0)
+        .filter((x) => x.qty > 0)
     );
+  };
 
-  const checkout = async (method: PaymentMethod) => {
-    if (!business || !currentBranch || cart.length === 0) return;
+  const checkout = async (
+    method: PaymentMethod
+  ) => {
+    console.log("CHECKOUT START", {
+      business,
+      cart,
+      total,
+      method,
+    });
+
+    if (!business) {
+      toast.error("No business found");
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
 
     setBusy(true);
 
@@ -135,46 +145,27 @@ function PosPage() {
       .from("orders")
       .insert({
         business_id: business.id,
-        branch_id: currentBranch.id,
-        total: total,
+        total,
         payment_method: method,
       })
-      .select("id,created_at")
+      .select()
       .single();
+
+    console.log("ORDER RESULT", {
+      order,
+      error,
+    });
 
     setBusy(false);
 
-    if (error || !order) {
-      return toast.error(error?.message ?? "Could not create order");
+    if (error) {
+      toast.error(error.message);
+      return;
     }
 
-    toast.success("Payment successful");
-
-    setReceipt({
-      business: business!,
-      branch: currentBranch!,
-      invoiceNumber: `#${order.id.slice(0, 8).toUpperCase()}`,
-      createdAt: order.created_at,
-      cashierName:
-        profile?.full_name ||
-        profile?.email ||
-        "Cashier",
-      items: cart.map((l) => ({
-        name: l.name,
-        qty: l.qty,
-        price: l.price,
-        tax_rate: 0,
-      })),
-      subtotal: total,
-      tax: 0,
-      discount: 0,
-      total: total,
-      paymentMethod: method,
-    });
+    toast.success("Order created");
 
     setCart([]);
-
-    printReceiptWhenReady();
   };
 
   return (
@@ -184,49 +175,43 @@ function PosPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
           <Input
-            placeholder="Search products…"
+            placeholder="Search products..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
             className="h-11 pl-9"
           />
         </div>
 
-        {filtered.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            {products.length === 0
-              ? "No products yet — add some in Products."
-              : "No matches"}
-          </div>
-        ) : (
-          <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto pb-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {filtered.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => addToCart(p)}
-                className="group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
-              >
-                <div className="aspect-square w-full overflow-hidden">
-                  <ProductAvatar
-                    name={p.name}
-                    imageUrl={null}
-                    rounded="rounded-none"
-                    className="text-3xl"
-                  />
+        <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto pb-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {filtered.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => addToCart(p)}
+              className="group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
+            >
+              <div className="aspect-square w-full overflow-hidden">
+                <ProductAvatar
+                  name={p.name}
+                  imageUrl={null}
+                  rounded="rounded-none"
+                  className="text-3xl"
+                />
+              </div>
+
+              <div className="p-3">
+                <div className="line-clamp-2 text-sm font-medium">
+                  {p.name}
                 </div>
 
-                <div className="p-3">
-                  <div className="line-clamp-2 text-sm font-medium">
-                    {p.name}
-                  </div>
-
-                  <div className="mt-1 text-sm font-semibold text-primary">
-                    {formatMoney(Number(p.price))}
-                  </div>
+                <div className="mt-1 text-sm font-semibold text-primary">
+                  {formatMoney(Number(p.price))}
                 </div>
-              </button>
-            ))}
-          </div>
-        )}
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
       <aside className="flex flex-col border-t bg-card lg:border-l lg:border-t-0">
@@ -237,8 +222,7 @@ function PosPage() {
             </h2>
 
             <p className="text-xs text-muted-foreground">
-              {cart.length} item
-              {cart.length === 1 ? "" : "s"}
+              {cart.length} items
             </p>
           </div>
 
@@ -277,7 +261,9 @@ function PosPage() {
                     </div>
 
                     <div className="text-sm font-semibold">
-                      {formatMoney(l.price * l.qty)}
+                      {formatMoney(
+                        l.price * l.qty
+                      )}
                     </div>
                   </div>
 
@@ -350,7 +336,9 @@ function PosPage() {
                 disabled={
                   busy || cart.length === 0
                 }
-                onClick={() => checkout(b.m)}
+                onClick={() =>
+                  checkout(b.m)
+                }
                 className={cn(
                   "h-12 flex-col gap-0.5 text-xs",
                   b.m === "cash" &&
@@ -364,8 +352,6 @@ function PosPage() {
           </div>
         </div>
       </aside>
-
-      {receipt && <Receipt data={receipt} />}
     </div>
   );
 }

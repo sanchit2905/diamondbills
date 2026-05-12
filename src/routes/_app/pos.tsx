@@ -38,7 +38,7 @@ interface CartLine {
 type PaymentMethod = "cash" | "card" | "upi";
 
 function PosPage() {
-  const { business, currentBranch } = useAuth();
+  const { business } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -56,6 +56,11 @@ function PosPage() {
         .order("name");
 
       console.log("PRODUCTS", { data, error });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
 
       if (data) {
         setProducts(data as Product[]);
@@ -124,7 +129,6 @@ function PosPage() {
   ) => {
     console.log("CHECKOUT START", {
       business,
-      currentBranch,
       cart,
       total,
       method,
@@ -147,10 +151,6 @@ function PosPage() {
       .insert({
         business_id: Number(business.id),
 
-        branch_id: Number(
-          currentBranch?.id ?? 1
-        ),
-
         total,
 
         payment_method: method,
@@ -163,6 +163,7 @@ function PosPage() {
     setBusy(false);
 
     if (error) {
+      console.error(error);
       toast.error(error.message);
       return;
     }

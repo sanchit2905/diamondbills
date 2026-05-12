@@ -102,32 +102,30 @@ function SignupPage() {
       return;
     }
 
-    const { data: prov, error: provErr } =
-      await supabase.functions.invoke("provision-tenant", {
-        body: {
-          businessName: form.businessName,
-          businessType: form.businessType,
-          branchName: form.branchName,
-          gst: form.gst || null,
-          phone: form.phone || null,
-          address: form.address || null,
-          fullName: form.fullName,
-        },
-      });
+    const { data: biz, error: bizErr } = await supabase
+      .from("businesses")
+      .insert({
+        name: form.businessName,
+      })
+      .select()
+      .single();
 
-    if (provErr || !prov?.ok) {
+    if (bizErr || !biz) {
       setBusy(false);
-
-      const msg =
-        (prov as { error?: string } | null)?.error ??
-        provErr?.message ??
-        "Tenant provisioning failed";
-
-      setError(msg);
-      toast.error(msg);
-
+      toast.error("Failed creating business");
       return;
     }
+
+    await supabase.from("branches").insert({
+      business_id: biz.id,
+      name: form.branchName,
+    });
+
+    await supabase.from("business_members").insert({
+      user_id: signup.user.id,
+      business_id: biz.id,
+      role: "owner",
+    });
 
     await refresh();
 

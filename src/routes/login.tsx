@@ -21,11 +21,7 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      void nav({ to: "/dashboard" });
-    }
-  }, [user, nav]);
+  
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();

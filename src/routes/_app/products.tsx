@@ -67,7 +67,7 @@ function ProductsPage() {
     const [{ data: ps }, { data: cs }] = await Promise.all([
       supabase
         .from("products")
-        .select("id,name,description,price,tax_rate,is_available,category_id,image_url,sku")
+        .select("id,name,price,business_id,created_at")
         .eq("business_id", business.id)
         .order("created_at", { ascending: false }),
       supabase.from("categories").select("id,name").eq("business_id", business.id).order("name"),

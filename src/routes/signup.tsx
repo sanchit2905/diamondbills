@@ -134,6 +134,7 @@ function SignupPage() {
     setBusy(false);
 
     window.location.href = "/dashboard";
+    };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">

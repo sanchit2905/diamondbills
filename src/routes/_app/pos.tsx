@@ -151,7 +151,7 @@ function PosPage() {
       .from("orders")
       .insert({
         business_id: business.id,
-        branch_id: currentBranch.id,
+        branch_id: Number(currentBranch.id),
         total,
         payment_method: method,
       })

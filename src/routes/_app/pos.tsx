@@ -133,17 +133,16 @@ function PosPage() {
     );
 
   const checkout = async (method: PaymentMethod) => {
-    if (!business || !currentBranch || cart.length === 0) return;
+    if (!business || cart.length === 0) return;
 
     setBusy(true);
 
-    const invoice = generateInvoiceNumber(currentBranch.name);
+    const invoice = generateInvoiceNumber("POS");
 
     const { data: order, error } = await supabase
       .from("orders")
       .insert({
         business_id: business.id,
-        branch_id: currentBranch.id,
         invoice_number: invoice,
         subtotal: totals.subtotal,
         tax: totals.tax,
@@ -152,10 +151,6 @@ function PosPage() {
         payment_method: method,
         status: "completed",
         cashier_id: user?.id,
-        cashier_name:
-          profile?.full_name ||
-          profile?.email ||
-          "Cashier",
       })
       .select("id,invoice_number,created_at")
       .single();

@@ -135,11 +135,6 @@ function PosPage() {
       return;
     }
 
-    if (!currentBranch) {
-      toast.error("No branch found");
-      return;
-    }
-
     if (cart.length === 0) {
       toast.error("Cart is empty");
       return;
@@ -150,9 +145,14 @@ function PosPage() {
     const { data: order, error } = await supabase
       .from("orders")
       .insert({
-        business_id: business.id,
-        branch_id: Number(currentBranch.id),
+        business_id: Number(business.id),
+
+        branch_id: Number(
+          currentBranch?.id ?? 1
+        ),
+
         total,
+
         payment_method: method,
       })
       .select()

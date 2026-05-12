@@ -141,17 +141,16 @@ function PosPage() {
 
     const { data: order, error } = await supabase
       .from("orders")
-      .insert({
-        business_id: business.id,
-        invoice_number: invoice,
-        subtotal: totals.subtotal,
-        tax: totals.tax,
-        discount,
-        total: totals.total,
-        payment_method: method,
-        status: "completed",
-        cashier_id: user?.id,
-      })
+      ..insert({
+  business_id: business.id,
+  invoice_number: invoice,
+  subtotal: totals.subtotal,
+  tax: totals.tax,
+  discount,
+  total: totals.total,
+  payment_method: method,
+  status: "completed",
+  })
       .select("id,invoice_number,created_at")
       .single();
 

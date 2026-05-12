@@ -7,6 +7,10 @@ export type AppRole = "owner" | "manager" | "cashier";
 export interface BusinessSummary {
   id: string;
   name: string;
+  business_type: "cafe" | "restaurant" | "salon" | "grocery" | "bakery" | "other";
+  gst_number: string | null;
+  address: string | null;
+  phone: string | null;
 }
 
 export interface BranchSummary {

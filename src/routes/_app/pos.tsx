@@ -13,7 +13,7 @@ import {
   CreditCard,
   Smartphone,
 } from "lucide-react";
-import { formatMoney, generateInvoiceNumber } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { toast } from "sonner";
 import {
   Receipt,
@@ -131,20 +131,17 @@ function PosPage() {
 
     setBusy(true);
 
-    const invoice = generateInvoiceNumber("POS");
-
     const { data: order, error } = await supabase
       .from("orders")
       .insert({
         business_id: business.id,
         branch_id: currentBranch.id,
-        invoice_number: invoice,
         subtotal: total,
         total: total,
         payment_method: method,
         cashier_name: profile?.full_name || profile?.email || null,
       })
-      .select("id,invoice_number,created_at")
+      .select("id,created_at")
       .single();
 
     if (error || !order) {
@@ -179,7 +176,7 @@ function PosPage() {
     setReceipt({
       business: business!,
       branch: currentBranch!,
-      invoiceNumber: order.invoice_number,
+      invoiceNumber: `#${order.id.slice(0, 8).toUpperCase()}`,
       createdAt: order.created_at,
       cashierName:
         profile?.full_name ||

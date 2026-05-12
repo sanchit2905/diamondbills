@@ -14,7 +14,7 @@ interface Stats {
   todaySales: number;
   todayOrders: number;
   totalProducts: number;
-  recent: Array<{ id: string; invoice_number: string; total: number; created_at: string; payment_method: string }>;
+  recent: Array<{ id: string; total: number; created_at: string; payment_method: string }>;
   top: Array<{ name: string; qty: number; revenue: number }>;
 }
 
@@ -38,7 +38,7 @@ function Dashboard() {
 
       const { data: recent } = await supabase
         .from("orders")
-        .select("id,invoice_number,total,created_at,payment_method")
+        .select("id,total,created_at,payment_method")
         .eq("business_id", business.id)
         .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: false })
@@ -109,7 +109,7 @@ function Dashboard() {
             {stats?.recent.map((o) => (
               <div key={o.id} className="flex items-center justify-between py-3">
                 <div>
-                  <div className="text-sm font-medium">{o.invoice_number}</div>
+                  <div className="text-sm font-medium">#{o.id.slice(0, 8).toUpperCase()}</div>
                   <div className="text-xs text-muted-foreground">
                     {formatDateTime(o.created_at)} · {o.payment_method.toUpperCase()}
                   </div>

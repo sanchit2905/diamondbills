@@ -52,7 +52,7 @@ function PosPage() {
       const { data, error } = await supabase
         .from("products")
         .select("id,name,price,business_id")
-        .eq("business_id", business.id)
+        .eq("business_id", Number(business.id))
         .order("name");
 
       console.log("PRODUCTS", { data, error });
@@ -142,7 +142,7 @@ function PosPage() {
 
     setBusy(true);
 
-    const { data: order, error } = await supabase
+    const { error } = await supabase
       .from("orders")
       .insert({
         business_id: Number(business.id),
@@ -154,12 +154,9 @@ function PosPage() {
         total,
 
         payment_method: method,
-      })
-      .select()
-      .single();
+      });
 
     console.log("ORDER RESULT", {
-      order,
       error,
     });
 

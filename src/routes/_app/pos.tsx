@@ -38,7 +38,7 @@ interface CartLine {
 type PaymentMethod = "cash" | "card" | "upi";
 
 function PosPage() {
-  const { business } = useAuth();
+  const { business, currentBranch } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -134,8 +134,8 @@ function PosPage() {
       method,
     });
 
-    if (!business) {
-      toast.error("No business found");
+    if (!business || !currentBranch) {
+      toast.error("No business/branch found");
       return;
     }
 
@@ -149,10 +149,9 @@ function PosPage() {
     const { error } = await supabase
       .from("orders")
       .insert({
-        business_id: Number(business.id),
-
+        business_id: business.id,
+        branch_id: currentBranch.id,
         total,
-
         payment_method: method,
       });
 

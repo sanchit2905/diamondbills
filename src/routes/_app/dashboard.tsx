@@ -32,15 +32,12 @@ function Dashboard() {
         .from("orders")
         .select("id,total")
         .eq("business_id", business.id)
-        .eq("branch_id", currentBranch.id)
-        .gte("created_at", start.toISOString())
-        .eq("status", "completed");
+        .gte("created_at", start.toISOString());
 
       const { data: recent } = await supabase
         .from("orders")
         .select("id,total,created_at,payment_method")
         .eq("business_id", business.id)
-        .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: false })
         .limit(8);
 

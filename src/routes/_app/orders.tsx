@@ -13,14 +13,8 @@ export const Route = createFileRoute("/_app/orders")({
 
 interface Order {
   id: string;
-  
-  subtotal: number;
-  tax: number;
-  discount: number;
   total: number;
   payment_method: string;
-  status: string;
-  cashier_name: string | null;
   created_at: string;
 }
 
@@ -30,18 +24,17 @@ function OrdersPage() {
   const [reprint, setReprint] = useState<ReceiptData | null>(null);
 
   useEffect(() => {
-    if (!business || !currentBranch) return;
+    if (!business) return;
     void (async () => {
       const { data } = await supabase
         .from("orders")
-        .select("id,subtotal,tax,discount,total,payment_method,status,cashier_name,created_at")
+        .select("id,total,payment_method,created_at")
         .eq("business_id", business.id)
-        .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: false })
         .limit(100);
       setOrders((data ?? []) as Order[]);
     })();
-  }, [business?.id, currentBranch?.id]);
+  }, [business?.id]);
 
   const printAgain = (o: Order) => {
     if (!business || !currentBranch) return;
@@ -50,11 +43,11 @@ function OrdersPage() {
       branch: currentBranch,
       invoiceNumber: `#${o.id.slice(0, 8).toUpperCase()}`,
       createdAt: o.created_at,
-      cashierName: o.cashier_name ?? "Cashier",
+      cashierName: "Cashier",
       items: [],
-      subtotal: Number(o.subtotal),
-      tax: Number(o.tax),
-      discount: Number(o.discount),
+      subtotal: Number(o.total),
+      tax: 0,
+      discount: 0,
       total: Number(o.total),
       paymentMethod: o.payment_method,
     });
@@ -87,7 +80,7 @@ function OrdersPage() {
                 <tr key={o.id}>
                   <td className="px-4 py-3 font-medium">#{o.id.slice(0, 8).toUpperCase()}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateTime(o.created_at)}</td>
-                  <td className="px-4 py-3">{o.cashier_name}</td>
+                  <td className="px-4 py-3">—</td>
                   <td className="px-4 py-3 uppercase">{o.payment_method}</td>
                   <td className="px-4 py-3 text-right font-semibold">{formatMoney(Number(o.total))}</td>
                   <td className="px-4 py-3 text-right">

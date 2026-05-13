@@ -164,11 +164,14 @@ function PosPage() {
 
     setBusy(true);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("orders")
-      .insert(payload);
+      .insert(payload)
+      .select()
+      .single();
 
-    console.log("ORDER RESULT", {
+    console.log("ORDER INSERT", {
+      data,
       error,
     });
 
@@ -177,6 +180,11 @@ function PosPage() {
     if (error) {
       console.error(error);
       toast.error(error.message);
+      return;
+    }
+
+    if (!data) {
+      toast.error("Insert failed");
       return;
     }
 

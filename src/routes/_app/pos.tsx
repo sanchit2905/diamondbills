@@ -151,8 +151,8 @@ function PosPage() {
     }
 
     const payload = {
-      business_id: Number(business.id),
-      branch_id: Number(currentBranch.id),
+      business_id: business.id,
+      branch_id: currentBranch.id,
       total,
       payment_method: method,
     };

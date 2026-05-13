@@ -149,10 +149,8 @@ function PosPage() {
     const { error } = await supabase
       .from("orders")
       .insert({
-        business_id: Number(business.id),
-
+        business_id: business.id,
         total,
-
         payment_method: method,
       });
 

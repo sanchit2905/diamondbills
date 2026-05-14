@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { Receipt, printReceiptWhenReady, type ReceiptData } from "@/components/Receipt";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/orders")({
   component: OrdersPage,
@@ -13,9 +14,13 @@ export const Route = createFileRoute("/_app/orders")({
 
 interface Order {
   id: string;
+  subtotal: number;
+  tax: number;
+  discount: number;
   total: number;
   payment_method: string;
   created_at: string;
+  cashier_name: string | null;
 }
 
 function OrdersPage() {
@@ -26,28 +31,46 @@ function OrdersPage() {
   useEffect(() => {
     if (!business) return;
     void (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders")
-        .select("id,total,payment_method,created_at")
+        .select("id,subtotal,tax,discount,total,payment_method,created_at,cashier_name")
         .eq("business_id", business.id)
         .order("created_at", { ascending: false })
         .limit(100);
+      if (error) {
+        console.error("[Orders] load failed", error);
+        toast.error(error.message);
+        return;
+      }
       setOrders((data ?? []) as Order[]);
     })();
   }, [business?.id]);
 
-  const printAgain = (o: Order) => {
+  const printAgain = async (o: Order) => {
     if (!business || !currentBranch) return;
+    const { data: items, error } = await supabase
+      .from("order_items")
+      .select("name,price,quantity,tax_rate")
+      .eq("order_id", o.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setReprint({
       business,
       branch: currentBranch,
       invoiceNumber: `#${o.id.slice(0, 8).toUpperCase()}`,
       createdAt: o.created_at,
-      cashierName: "Cashier",
-      items: [],
-      subtotal: Number(o.total),
-      tax: 0,
-      discount: 0,
+      cashierName: o.cashier_name ?? "Cashier",
+      items: (items ?? []).map((i) => ({
+        name: i.name,
+        qty: i.quantity,
+        price: Number(i.price),
+        tax_rate: Number(i.tax_rate ?? 0),
+      })),
+      subtotal: Number(o.subtotal),
+      tax: Number(o.tax),
+      discount: Number(o.discount),
       total: Number(o.total),
       paymentMethod: o.payment_method,
     });
@@ -80,11 +103,11 @@ function OrdersPage() {
                 <tr key={o.id}>
                   <td className="px-4 py-3 font-medium">#{o.id.slice(0, 8).toUpperCase()}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateTime(o.created_at)}</td>
-                  <td className="px-4 py-3">—</td>
+                  <td className="px-4 py-3">{o.cashier_name ?? "—"}</td>
                   <td className="px-4 py-3 uppercase">{o.payment_method}</td>
                   <td className="px-4 py-3 text-right font-semibold">{formatMoney(Number(o.total))}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="ghost" onClick={() => printAgain(o)}>
+                    <Button size="sm" variant="ghost" onClick={() => void printAgain(o)}>
                       <Printer className="mr-1 h-4 w-4" /> Print
                     </Button>
                   </td>

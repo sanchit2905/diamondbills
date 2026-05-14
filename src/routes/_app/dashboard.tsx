@@ -46,7 +46,32 @@ function Dashboard() {
         .select("id", { count: "exact", head: true })
         .eq("business_id", business.id);
 
-      const top: Array<{ name: string; qty: number; revenue: number }> = [];
+      const monthStart = new Date();
+      monthStart.setDate(monthStart.getDate() - 30);
+      const { data: recentOrderIds } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("business_id", business.id)
+        .gte("created_at", monthStart.toISOString());
+      const ids = (recentOrderIds ?? []).map((o) => o.id);
+      let top: Array<{ name: string; qty: number; revenue: number }> = [];
+      if (ids.length > 0) {
+        const { data: items } = await supabase
+          .from("order_items")
+          .select("name,quantity,line_total,order_id")
+          .in("order_id", ids);
+        const agg = new Map<string, { qty: number; revenue: number }>();
+        for (const it of items ?? []) {
+          const cur = agg.get(it.name) ?? { qty: 0, revenue: 0 };
+          cur.qty += Number(it.quantity);
+          cur.revenue += Number(it.line_total);
+          agg.set(it.name, cur);
+        }
+        top = Array.from(agg.entries())
+          .map(([name, v]) => ({ name, ...v }))
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 5);
+      }
 
       setStats({
         todaySales: (todays ?? []).reduce((a, o) => a + Number(o.total), 0),
